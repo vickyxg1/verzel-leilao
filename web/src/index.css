@@ -74,6 +74,14 @@ section { margin-bottom: 24px; }
 .attrs dt { color: var(--muted); }
 .attrs dd { margin: 0; }
 
+.big { font-size: 28px; font-weight: 700; margin: 0; }
+.status-banner { margin: 0; padding: 10px 12px; border-radius: 6px; font-weight: 600; color: #fff; }
+.status-banner.winning { background: var(--ok); }
+.status-banner.losing { background: var(--danger); }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.stats .card { display: flex; flex-direction: column; gap: 4px; }
+.stats strong { font-size: 22px; }
+
 .table { width: 100%; border-collapse: collapse; }
 .table td { padding: 8px 4px; border-top: 1px solid var(--border); vertical-align: middle; }
 @media (max-width: 720px) { .table td:nth-child(4) { display: none; } }

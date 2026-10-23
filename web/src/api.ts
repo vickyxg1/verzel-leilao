@@ -47,6 +47,7 @@ export type Lot = {
   leader_alias: string | null
   server_now: string
 }
+export type Bid = { seq: number; bidder_alias: string; amount_cents: number; created_at: string; prev_hash: string; hash: string }
 export type Showcase = { live: Lot[]; scheduled: Lot[]; ended: Lot[] }
 export type SearchItem = { externalId: string; title: string; artist: string | null; date: string | null; medium: string | null; thumbUrl: string }
 

@@ -6,6 +6,7 @@ import Login from './pages/Login'
 import LotPage from './pages/LotPage'
 import SellerPanel from './pages/SellerPanel'
 import Showcase from './pages/Showcase'
+import Wallet from './pages/Wallet'
 
 function Header() {
   const { me, logout } = useAuth()
@@ -15,6 +16,7 @@ function Header() {
       <nav>
         <Link to="/">Vitrine</Link>
         {me?.role === 'AUCTIONEER' && <Link to="/painel">Painel</Link>}
+        {me?.role === 'BIDDER' && <Link to="/carteira">Carteira</Link>}
         {me ? (
           <>
             <span className="muted">{me.name} · {me.role === 'BIDDER' ? 'Licitante' : 'Leiloeiro'}</span>
@@ -47,7 +49,8 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/lotes/:id" element={<LotPage />} />
           <Route path="/painel" element={<RequireRole role="AUCTIONEER"><SellerPanel /></RequireRole>} />
-          <Route path="*" element={<p className="muted">Página não encontrada.</p>} />
+          <Route path="/carteira" element={<RequireRole role="BIDDER"><Wallet /></RequireRole>} />
+          <Route path="*"element={<p className="muted">Página não encontrada.</p>} />
         </Routes>
       </main>
     </>

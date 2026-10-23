@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { authenticate, authRouter } from './auth.ts';
+import { bidsRouter } from './bids.ts';
+import { walletRouter } from './wallet.ts';
 import { pool } from './db.ts';
 import { errorHandler } from './errors.ts';
 import { itemsRouter } from './items.ts';
@@ -23,7 +25,9 @@ export function createApp() {
   });
   app.use('/api/auth', authRouter);
   app.use('/api/items', itemsRouter);
+  app.use('/api/lots/:id/bids', bidsRouter);
   app.use('/api/lots', lotsRouter);
+  app.use('/api/wallet', walletRouter);
   app.use('/api', (_req, res) => {
     res.status(404).json({ code: 'NOT_FOUND', message: 'Rota não encontrada' });
   });

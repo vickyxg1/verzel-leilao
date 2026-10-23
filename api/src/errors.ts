@@ -17,6 +17,9 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     res.status(err.status).json({ code: err.code, message: err.message });
   } else if (err instanceof ZodError) {
     res.status(400).json({ code: 'VALIDATION', message: 'Dados inválidos', issues: err.issues });
+  } else if (err?.code === '40P01' || err?.code === '40001') {
+    // deadlock/serialização: transação desfeita por inteiro, cliente pode repetir
+    res.status(409).json({ code: 'CONCURRENCY_RETRY', message: 'Muitas operações simultâneas. Tente novamente.' });
   } else if (err?.code === '23505') {
     res.status(409).json({ code: 'CONFLICT', message: 'Registro duplicado' });
   } else if (err?.type === 'entity.parse.failed') {
