@@ -91,11 +91,16 @@ export default function LotPage() {
           <span className={`badge ${lot.status}`}>{STATUS_LABEL[lot.status]}</span>
           <h1>{lot.title}</h1>
           <p className="big">{lot.current_bid_cents == null ? 'Sem lances' : brl(lot.current_bid_cents)}</p>
-          <p className="muted">Encerra em {dateTime(lot.ends_at)}</p>
+          {lot.status === 'ENDED' ? (
+            <p>{lot.winner_alias ? `Arrematado por ${lot.winner_alias} em ${dateTime(lot.ends_at)}` : `Encerrado sem lances em ${dateTime(lot.ends_at)}`}</p>
+          ) : (
+            <p className="muted">Encerra em {dateTime(lot.ends_at)}</p>
+          )}
           <BidBox lot={lot} history={history} onBid={load} />
         </div>
         <section className="card">
           <h2>Histórico de lances</h2>
+          <p><Link to={`/auditoria/${lot.id}`}>Auditar integridade deste histórico</Link></p>
           {history.length === 0 ? <p className="muted">Nenhum lance ainda.</p> : (
             <table className="table">
               <tbody>

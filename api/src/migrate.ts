@@ -1,5 +1,6 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { anchorPool, ensureAnchorSchema } from './anchor.ts';
 import { pool, tx } from './db.ts';
 
 const dir = fileURLToPath(new URL('../migrations/', import.meta.url));
@@ -17,9 +18,10 @@ export async function migrate() {
       console.log(`migration aplicada: ${file}`);
     }
   });
+  await ensureAnchorSchema();
 }
 
 if (import.meta.main) {
   await migrate();
-  await pool.end();
+  await Promise.all([pool.end(), anchorPool.end()]);
 }

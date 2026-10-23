@@ -98,9 +98,12 @@ function CreateLot({ onCreated }: { onCreated: () => void }) {
 
 export default function SellerPanel() {
   const [lots, setLots] = useState<Lot[] | null>(null)
+  const [total, setTotal] = useState(0)
   const [error, setError] = useState('')
 
-  const load = () => api<Lot[]>('/lots/mine').then(setLots).catch((e) => setError(e.message))
+  const load = () => api<{ lots: Lot[]; total_received_cents: number }>('/lots/mine')
+    .then((d) => { setLots(d.lots); setTotal(d.total_received_cents) })
+    .catch((e) => setError(e.message))
   useEffect(() => { load() }, [])
 
   const cancel = async (lot: Lot) => {
@@ -118,6 +121,7 @@ export default function SellerPanel() {
       <CreateLot onCreated={load} />
       <section className="card">
         <h2>Meus lotes</h2>
+        <p>Total recebido em lotes arrematados: <strong className="ok">{brl(total)}</strong></p>
         {error && <p className="error">{error}</p>}
         {lots?.length === 0 && <p className="muted">Nenhum lote ainda.</p>}
         <table className="table">
@@ -126,7 +130,12 @@ export default function SellerPanel() {
               <tr key={lot.id}>
                 <td><Link to={`/lotes/${lot.id}`}>{lot.title}</Link></td>
                 <td><span className={`badge ${lot.status}`}>{STATUS_LABEL[lot.status]}</span></td>
-                <td>{lot.current_bid_cents == null ? 'Sem lances' : brl(lot.current_bid_cents)}</td>
+                <td>
+                  {lot.status === 'ENDED'
+                    ? lot.settled_at == null ? 'Encerrando…'
+                      : lot.winner_alias ? `Arrematado por ${brl(lot.final_amount_cents!)} (${lot.winner_alias})` : 'Encerrado sem lances'
+                    : lot.current_bid_cents == null ? 'Sem lances' : brl(lot.current_bid_cents)}
+                </td>
                 <td className="muted">{dateTime(lot.starts_at)} → {dateTime(lot.ends_at)}</td>
                 <td>
                   {lot.bid_count === 0 && (lot.status === 'SCHEDULED' || lot.status === 'LIVE') && (

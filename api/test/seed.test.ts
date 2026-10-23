@@ -1,10 +1,10 @@
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { pool } from '../src/db.ts';
 import { seed } from '../src/seed.ts';
-import { resetDb } from './helpers.ts';
+import { closeDb, resetDb } from './helpers.ts';
 
 beforeAll(resetDb);
-afterAll(() => pool.end());
+afterAll(closeDb);
 
 // T21: seed em banco limpo e repetido
 it('seed idempotente: 1 leiloeiro, 2 licitantes com saldo, 1 lote ao vivo, sem duplicar', async () => {

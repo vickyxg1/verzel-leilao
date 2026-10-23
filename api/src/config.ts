@@ -6,6 +6,7 @@ function required(name: string): string {
 
 export const config = {
   databaseUrl: required('DATABASE_URL'),
+  anchorDatabaseUrl: required('ANCHOR_DATABASE_URL'),
   databaseSsl: process.env.DATABASE_SSL === 'true',
   jwtSecret: required('JWT_SECRET'),
   port: Number(process.env.PORT ?? 3000),

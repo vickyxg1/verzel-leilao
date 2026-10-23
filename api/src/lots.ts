@@ -19,11 +19,17 @@ const LOT_SELECT = `
          l.starting_price_cents, l.min_increment_cents, l.current_bid_cents, l.bid_count,
          l.starts_at, l.ends_at, l.original_ends_at, l.cancelled_at, l.created_at,
          seller.public_alias AS seller_alias, leader.public_alias AS leader_alias,
+         l.settled_at, st.amount_cents AS final_amount_cents, winner.public_alias AS winner_alias,
          now() AS server_now
   FROM lots l
   JOIN item_snapshots s ON s.id = l.item_snapshot_id
   JOIN users seller ON seller.id = l.seller_id
-  LEFT JOIN users leader ON leader.id = l.leader_id`;
+  LEFT JOIN users leader ON leader.id = l.leader_id
+  LEFT JOIN settlements st ON st.lot_id = l.id
+  LEFT JOIN users winner ON winner.id = st.winner_id`;
+
+// Rede de segurança do pg_cron: quem consulta um lote vencido já o vê liquidado. Idempotente.
+export const settleDue = () => pool.query('SELECT settle_due_lots()');
 
 function present(row: Record<string, any>): Record<string, any> {
   const { attributes, source_url, ...rest } = row;
@@ -74,12 +80,22 @@ lotsRouter.get('/', async (req, res) => {
 
 // Painel do leiloeiro: todos os próprios lotes, inclusive cancelados.
 lotsRouter.get('/mine', requireRole('AUCTIONEER'), async (req, res) => {
+  await settleDue();
   const { rows } = await pool.query(`${LOT_SELECT} WHERE l.seller_id = $1 ORDER BY l.created_at DESC`, [req.user!.id]);
-  res.json(rows.map(present));
+  const lots = rows.map(present);
+  res.json({
+    lots,
+    total_received_cents: lots.reduce((sum, l) => sum + (l.final_amount_cents ?? 0), 0),
+  });
 });
 
 lotsRouter.get('/:id', async (req, res) => {
   const id = z.coerce.number().int().positive().parse(req.params.id);
+  // só trava o lote se ele já venceu e não foi liquidado (leitura comum não disputa lock com lances)
+  await pool.query(
+    'SELECT settle_lot(id) FROM lots WHERE id = $1 AND settled_at IS NULL AND cancelled_at IS NULL AND ends_at <= now()',
+    [id],
+  );
   const { rows } = await pool.query(`${LOT_SELECT} WHERE l.id = $1`, [id]);
   if (!rows[0]) throw new AppError(404, 'LOT_NOT_FOUND', 'Lote não encontrado');
   res.json(present(rows[0]));

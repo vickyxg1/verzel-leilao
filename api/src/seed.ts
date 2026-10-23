@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import type pg from 'pg';
+import { anchorPool } from './anchor.ts';
 import { createUser, type Role } from './auth.ts';
 import { pool, tx } from './db.ts';
 import { migrate } from './migrate.ts';
@@ -61,6 +62,6 @@ export async function seed() {
 if (import.meta.main) {
   await migrate();
   await seed();
-  await pool.end();
+  await Promise.all([pool.end(), anchorPool.end()]);
   console.log('seed concluído');
 }

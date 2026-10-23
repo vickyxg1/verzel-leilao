@@ -3,7 +3,9 @@ import { fileURLToPath } from 'node:url';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { authenticate, authRouter } from './auth.ts';
+import { auditRouter } from './audit.ts';
 import { bidsRouter } from './bids.ts';
+import { participationsRouter, receiptsRouter } from './receipts.ts';
 import { walletRouter } from './wallet.ts';
 import { pool } from './db.ts';
 import { errorHandler } from './errors.ts';
@@ -26,6 +28,9 @@ export function createApp() {
   app.use('/api/auth', authRouter);
   app.use('/api/items', itemsRouter);
   app.use('/api/lots/:id/bids', bidsRouter);
+  app.use('/api/lots/:id/audit', auditRouter);
+  app.use('/api/receipts', receiptsRouter);
+  app.use('/api/me/participations', participationsRouter);
   app.use('/api/lots', lotsRouter);
   app.use('/api/wallet', walletRouter);
   app.use('/api', (_req, res) => {

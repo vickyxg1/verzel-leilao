@@ -78,6 +78,13 @@ section { margin-bottom: 24px; }
 .status-banner { margin: 0; padding: 10px 12px; border-radius: 6px; font-weight: 600; color: #fff; }
 .status-banner.winning { background: var(--ok); }
 .status-banner.losing { background: var(--danger); }
+.status-banner.warning { background: #e8590c; }
+.table-scroll { overflow-x: auto; }
+.table th { text-align: left; font-size: 13px; color: var(--muted); padding: 4px; }
+code { font-size: 13px; }
+.break { word-break: break-all; }
+.receipt { max-width: 560px; margin: 0 auto; }
+.receipt img { width: 100%; border-radius: 6px; }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
 .stats .card { display: flex; flex-direction: column; gap: 4px; }
 .stats strong { font-size: 22px; }

@@ -2,7 +2,10 @@ import type { ReactNode } from 'react'
 import { Link, Navigate, Route, Routes } from 'react-router'
 import type { Role } from './api'
 import { useAuth } from './auth'
+import Audit from './pages/Audit'
 import Login from './pages/Login'
+import MyWins from './pages/MyWins'
+import Receipt from './pages/Receipt'
 import LotPage from './pages/LotPage'
 import SellerPanel from './pages/SellerPanel'
 import Showcase from './pages/Showcase'
@@ -17,6 +20,7 @@ function Header() {
         <Link to="/">Vitrine</Link>
         {me?.role === 'AUCTIONEER' && <Link to="/painel">Painel</Link>}
         {me?.role === 'BIDDER' && <Link to="/carteira">Carteira</Link>}
+        {me?.role === 'BIDDER' && <Link to="/meus-arremates">Meus arremates</Link>}
         {me ? (
           <>
             <span className="muted">{me.name} · {me.role === 'BIDDER' ? 'Licitante' : 'Leiloeiro'}</span>
@@ -50,7 +54,10 @@ export default function App() {
           <Route path="/lotes/:id" element={<LotPage />} />
           <Route path="/painel" element={<RequireRole role="AUCTIONEER"><SellerPanel /></RequireRole>} />
           <Route path="/carteira" element={<RequireRole role="BIDDER"><Wallet /></RequireRole>} />
-          <Route path="*"element={<p className="muted">Página não encontrada.</p>} />
+          <Route path="/meus-arremates" element={<RequireRole role="BIDDER"><MyWins /></RequireRole>} />
+          <Route path="/auditoria/:id" element={<Audit />} />
+          <Route path="/comprovantes/:token" element={<Receipt />} />
+          <Route path="*" element={<p className="muted">Página não encontrada.</p>} />
         </Routes>
       </main>
     </>

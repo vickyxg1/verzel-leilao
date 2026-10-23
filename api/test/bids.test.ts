@@ -2,7 +2,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { bidHash, GENESIS_HASH } from '../src/audit.ts';
 import { pool } from '../src/db.ts';
-import { app, insertLot, registerAs, resetDb } from './helpers.ts';
+import { app, insertLot, registerAs, closeDb, resetDb } from './helpers.ts';
 
 type Agent = Awaited<ReturnType<typeof registerAs>>;
 let seller: Agent;
@@ -19,7 +19,7 @@ const wallet = async (b: Agent) => (await b.agent.get('/api/wallet')).body;
 async function assertCommitmentsConsistent() {
   const { rows } = await pool.query(`
     SELECT w.user_id, w.balance_cents, w.committed_cents,
-           COALESCE((SELECT sum(current_bid_cents) FROM lots WHERE leader_id = w.user_id), 0)::bigint AS leading
+           COALESCE((SELECT sum(current_bid_cents) FROM lots WHERE leader_id = w.user_id AND settled_at IS NULL), 0)::bigint AS leading
     FROM wallets w`);
   for (const r of rows) {
     expect(r.committed_cents).toBe(r.leading);
@@ -32,7 +32,7 @@ beforeAll(async () => {
   await resetDb();
   seller = await registerAs('AUCTIONEER');
 });
-afterAll(() => pool.end());
+afterAll(closeDb);
 
 describe('carteira', () => {
   it('depósito soma ao saldo; disponível = total - comprometido', async () => {

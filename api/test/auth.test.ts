@@ -1,10 +1,10 @@
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { pool } from '../src/db.ts';
-import { app, registerAs, resetDb } from './helpers.ts';
+import { app, registerAs, closeDb, resetDb } from './helpers.ts';
 
 beforeAll(resetDb);
-afterAll(() => pool.end());
+afterAll(closeDb);
 
 describe('auth', () => {
   it('registra, mantém sessão por cookie httpOnly e cria carteira zerada', async () => {

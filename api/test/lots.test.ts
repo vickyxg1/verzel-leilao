@@ -1,7 +1,7 @@
 import request from 'supertest';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { pool } from '../src/db.ts';
-import { app, insertLot, registerAs, resetDb } from './helpers.ts';
+import { app, insertLot, registerAs, closeDb, resetDb } from './helpers.ts';
 
 // API externa simulada: testes não dependem da internet.
 function mockAic(mode: 'ok' | 'timeout' | 'down' | 'ratelimit' = 'ok') {
@@ -32,7 +32,7 @@ beforeAll(async () => {
   bidder = await registerAs('BIDDER');
 });
 afterEach(() => vi.restoreAllMocks());
-afterAll(() => pool.end());
+afterAll(closeDb);
 
 describe('busca na API externa', () => {
   it('lista só itens com imagem', async () => {
@@ -117,7 +117,7 @@ describe('vitrine e cancelamento', () => {
     const all = [...vitrine.body.live, ...vitrine.body.scheduled, ...vitrine.body.ended].map((l: any) => l.id);
     expect(all).not.toContain(id);
     const mine = await seller.agent.get('/api/lots/mine');
-    expect(mine.body.find((l: any) => l.id === id).status).toBe('CANCELLED');
+    expect(mine.body.lots.find((l: any) => l.id === id).status).toBe('CANCELLED');
   });
 
   it('não cancela lote com lances nem encerrado', async () => {

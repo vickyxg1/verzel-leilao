@@ -1,4 +1,5 @@
 import request from 'supertest';
+import { anchorPool } from '../src/anchor.ts';
 import { createApp } from '../src/app.ts';
 import { pool } from '../src/db.ts';
 import { migrate } from '../src/migrate.ts';
@@ -7,8 +8,11 @@ export const app = createApp();
 
 export async function resetDb() {
   await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
+  await anchorPool.query('DROP TABLE IF EXISTS bid_anchors');
   await migrate();
 }
+
+export const closeDb = () => Promise.all([pool.end(), anchorPool.end()]);
 
 // Lote direto no banco, com horários relativos a now() em segundos (permite lote já ao vivo/encerrado).
 export async function insertLot(sellerId: number, opts: { startOffsetS?: number; endOffsetS?: number; start?: number; inc?: number } = {}) {

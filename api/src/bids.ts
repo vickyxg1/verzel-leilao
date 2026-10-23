@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { anchorBid } from './anchor.ts';
 import { bidHash } from './audit.ts';
 import { requireRole } from './auth.ts';
 import { pool, tx } from './db.ts';
@@ -90,7 +91,8 @@ bidsRouter.post('/', requireRole('BIDDER'), async (req, res) => {
   const lotId = z.coerce.number().int().positive().parse((req.params as { id: string }).id);
   const { amountCents } = z.object({ amountCents: z.number().int().positive().max(100_000_000_00) }).parse(req.body);
   const { previousLeaderId: _, ...bid } = await placeBid(lotId, req.user!.id, amountCents);
-  res.status(201).json(bid);
+  const anchored = await anchorBid(lotId, bid.seq, bid.hash);
+  res.status(201).json({ ...bid, anchored });
 });
 
 // Histórico público: só pseudônimo, valor, horário e hashes.
