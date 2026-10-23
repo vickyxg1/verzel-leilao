@@ -1,0 +1,21 @@
+# Postgres local para desenvolvimento e testes.
+# Em produção: banco principal e banco da âncora ficam em projetos Supabase separados.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: leilao
+      POSTGRES_PASSWORD: leilao
+      POSTGRES_DB: leilao
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U leilao"]
+      interval: 2s
+      retries: 30
+
+volumes:
+  pgdata:
