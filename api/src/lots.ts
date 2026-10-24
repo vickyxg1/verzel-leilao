@@ -4,6 +4,7 @@ import { requireRole } from './auth.ts';
 import { pool, tx } from './db.ts';
 import { AppError } from './errors.ts';
 import { fetchArtworkSnapshot } from './items.ts';
+import { publishLotChanged } from './realtime.ts';
 
 // Estado derivado do relógio do banco: nunca gravado, nunca vindo do cliente.
 // Janela de lance: starts_at <= now() < ends_at.
@@ -130,6 +131,7 @@ lotsRouter.post('/', requireRole('AUCTIONEER'), async (req, res) => {
     return lot.rows[0].id as number;
   });
   const { rows } = await pool.query(`${LOT_SELECT} WHERE l.id = $1`, [id]);
+  await publishLotChanged(id);
   res.status(201).json(present(rows[0]));
 });
 
@@ -149,5 +151,6 @@ lotsRouter.post('/:id/cancel', requireRole('AUCTIONEER'), async (req, res) => {
     if (lot.bid_count > 0) throw new AppError(409, 'LOT_HAS_BIDS', 'Lote com lances não pode ser cancelado');
     await c.query('UPDATE lots SET cancelled_at = now() WHERE id = $1', [id]);
   });
+  await publishLotChanged(id);
   res.status(204).end();
 });

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api, type Showcase as ShowcaseData } from '../api'
 import LotCard from '../components/LotCard'
+import { useLive } from '../realtime'
 
 const SECTIONS = [
   ['live', 'Ao vivo'],
@@ -13,12 +14,17 @@ export default function Showcase() {
   const [error, setError] = useState('')
   const [q, setQ] = useState('')
 
-  useEffect(() => {
-    const t = setTimeout(() => {
-      api<ShowcaseData>(`/lots${q ? `?q=${encodeURIComponent(q)}` : ''}`).then(setData).catch((e) => setError(e.message))
-    }, 250)
-    return () => clearTimeout(t)
+  const load = useCallback(() => {
+    api<ShowcaseData>(`/lots${q ? `?q=${encodeURIComponent(q)}` : ''}`).then((d) => { setData(d); setError('') }).catch((e) => setError(e.message))
   }, [q])
+  useEffect(() => {
+    const t = setTimeout(load, 250)
+    // lotes mudam de seção pela passagem do tempo, sem evento; relê a cada 30 s
+    const every = setInterval(load, 30_000)
+    return () => { clearTimeout(t); clearInterval(every) }
+  }, [load])
+  // novos lances, lotes criados e cancelados aparecem sem refresh
+  useLive('lots', load)
 
   return (
     <>

@@ -75,6 +75,8 @@ section { margin-bottom: 24px; }
 .attrs dd { margin: 0; }
 
 .big { font-size: 28px; font-weight: 700; margin: 0; }
+.countdown { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 20px; }
+.countdown.urgent { color: var(--danger); }
 .status-banner { margin: 0; padding: 10px 12px; border-radius: 6px; font-weight: 600; color: #fff; }
 .status-banner.winning { background: var(--ok); }
 .status-banner.losing { background: var(--danger); }

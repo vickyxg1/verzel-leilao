@@ -5,6 +5,7 @@ import { bidHash } from './audit.ts';
 import { requireRole } from './auth.ts';
 import { pool, tx } from './db.ts';
 import { AppError } from './errors.ts';
+import { publishLotChanged } from './realtime.ts';
 
 export const ANTI_SNIPING_MS = 120_000;
 const brl = (cents: number) => (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -92,6 +93,7 @@ bidsRouter.post('/', requireRole('BIDDER'), async (req, res) => {
   const { amountCents } = z.object({ amountCents: z.number().int().positive().max(100_000_000_00) }).parse(req.body);
   const { previousLeaderId: _, ...bid } = await placeBid(lotId, req.user!.id, amountCents);
   const anchored = await anchorBid(lotId, bid.seq, bid.hash);
+  await publishLotChanged(lotId);
   res.status(201).json({ ...bid, anchored });
 });
 

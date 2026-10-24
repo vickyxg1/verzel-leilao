@@ -43,6 +43,7 @@ export type Lot = {
   bid_count: number
   starts_at: string
   ends_at: string
+  original_ends_at: string
   seller_alias: string
   leader_alias: string | null
   server_now: string

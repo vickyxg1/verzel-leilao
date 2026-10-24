@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router'
 import { api, brl, dateTime, STATUS_LABEL, type Bid, type Lot } from '../api'
 import { useAuth } from '../auth'
+import Countdown from '../components/Countdown'
+import { useLive } from '../realtime'
 
 function BidBox({ lot, history, onBid }: { lot: Lot; history: Bid[]; onBid: () => void }) {
   const { me } = useAuth()
@@ -62,13 +64,16 @@ export default function LotPage() {
 
   const load = useCallback(() => {
     Promise.all([api<Lot>(`/lots/${id}`), api<Bid[]>(`/lots/${id}/bids`)])
-      .then(([l, h]) => { setLot(l); setHistory(h) })
+      .then(([l, h]) => { setLot(l); setHistory(h); setError('') })
       .catch((e) => setError(e.message))
   }, [id])
   useEffect(load, [load])
+  // lances de outros usuários, prorrogação e cancelamento chegam sem refresh
+  useLive(`lot:${id}`, load)
 
-  if (error) return <p className="error">{error}</p>
+  if (error && !lot) return <p className="error">{error}</p>
   if (!lot) return <p className="muted">Carregando…</p>
+  const extended = lot.ends_at !== lot.original_ends_at
 
   return (
     <div className="lot-page">
@@ -93,9 +98,20 @@ export default function LotPage() {
           <p className="big">{lot.current_bid_cents == null ? 'Sem lances' : brl(lot.current_bid_cents)}</p>
           {lot.status === 'ENDED' ? (
             <p>{lot.winner_alias ? `Arrematado por ${lot.winner_alias} em ${dateTime(lot.ends_at)}` : `Encerrado sem lances em ${dateTime(lot.ends_at)}`}</p>
+          ) : lot.status === 'LIVE' ? (
+            <p>
+              Encerra em <Countdown target={lot.ends_at} serverNow={lot.server_now} onZero={load} />{' '}
+              <span className="muted">({dateTime(lot.ends_at)}{extended && ', prorrogado por lance nos últimos 2 min'})</span>
+            </p>
+          ) : lot.status === 'SCHEDULED' ? (
+            <p>
+              Começa em <Countdown target={lot.starts_at} serverNow={lot.server_now} onZero={load} />{' '}
+              <span className="muted">({dateTime(lot.starts_at)})</span>
+            </p>
           ) : (
-            <p className="muted">Encerra em {dateTime(lot.ends_at)}</p>
+            <p className="muted">Lote cancelado pelo leiloeiro.</p>
           )}
+          {error && <p className="error">Sem conexão com o servidor; tentando de novo…</p>}
           <BidBox lot={lot} history={history} onBid={load} />
         </div>
         <section className="card">
