@@ -1,6 +1,7 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { api, brl, dateTime, STATUS_LABEL, type Lot, type SearchItem } from '../api'
+import { useLive } from '../realtime'
 
 // "2026-10-23T14:30" no fuso local, formato do <input type="datetime-local">
 const localInput = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
@@ -80,7 +81,16 @@ function CreateLot({ onCreated }: { onCreated: () => void }) {
       )}
       {picked && (
         <form onSubmit={create} className="stack">
-          <p>Item: <strong>{picked.title}</strong> <button type="button" className="link" onClick={() => setPicked(null)}>trocar</button></p>
+          <div className="picked">
+            <img src={picked.thumbUrl} alt={picked.title} />
+            <dl className="attrs">
+              <dt>Obra</dt><dd><strong>{picked.title}</strong></dd>
+              {picked.artist && <><dt>Artista</dt><dd>{picked.artist}</dd></>}
+              {picked.date && <><dt>Data</dt><dd>{picked.date}</dd></>}
+              {picked.medium && <><dt>Técnica</dt><dd>{picked.medium}</dd></>}
+              <dt /><dd><button type="button" className="link" onClick={() => setPicked(null)}>trocar obra</button></dd>
+            </dl>
+          </div>
           <div className="row">
             <label>Lance inicial (R$)<input type="number" min="0.01" step="0.01" required value={form.start} onChange={set('start')} /></label>
             <label>Incremento mínimo (R$)<input type="number" min="0.01" step="0.01" required value={form.increment} onChange={set('increment')} /></label>
@@ -100,16 +110,23 @@ export default function SellerPanel() {
   const [lots, setLots] = useState<Lot[] | null>(null)
   const [total, setTotal] = useState(0)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
 
-  const load = () => api<{ lots: Lot[]; total_received_cents: number }>('/lots/mine')
-    .then((d) => { setLots(d.lots); setTotal(d.total_received_cents) })
-    .catch((e) => setError(e.message))
-  useEffect(() => { load() }, [])
+  const load = useCallback(() => {
+    api<{ lots: Lot[]; total_received_cents: number }>('/lots/mine')
+      .then((d) => { setLots(d.lots); setTotal(d.total_received_cents) })
+      .catch((e) => setError(e.message))
+  }, [])
+  useEffect(load, [load])
+  // lances e cancelamentos chegam pelo tópico da vitrine; encerramento pelo pg_cron não emite evento, relê a cada 15 s
+  useLive('lots', load, 15_000)
 
   const cancel = async (lot: Lot) => {
-    if (!confirm(`Cancelar o lote "${lot.title}"?`)) return
+    const refund = lot.current_bid_cents == null ? '' : `\n\nO lote tem ${lot.bid_count} lance(s): a reserva de ${brl(lot.current_bid_cents)} do licitante líder será estornada automaticamente.`
+    if (!confirm(`Cancelar o lote "${lot.title}"?${refund}`)) return
     try {
-      await api(`/lots/${lot.id}/cancel`, { method: 'POST' })
+      const { refundedCents } = await api<{ refundedCents: number }>(`/lots/${lot.id}/cancel`, { method: 'POST' })
+      setNotice(refundedCents ? `Lote cancelado. ${brl(refundedCents)} estornados ao licitante líder.` : 'Lote cancelado.')
       load()
     } catch (err) {
       setError((err as Error).message)
@@ -123,6 +140,7 @@ export default function SellerPanel() {
         <h2>Meus lotes</h2>
         <p>Total recebido em lotes arrematados: <strong className="ok">{brl(total)}</strong></p>
         {error && <p className="error">{error}</p>}
+        {notice && <p className="ok" role="status">{notice}</p>}
         {lots?.length === 0 && <p className="muted">Nenhum lote ainda.</p>}
         <table className="table">
           <tbody>
@@ -138,7 +156,7 @@ export default function SellerPanel() {
                 </td>
                 <td className="muted">{dateTime(lot.starts_at)} → {dateTime(lot.ends_at)}</td>
                 <td>
-                  {lot.bid_count === 0 && (lot.status === 'SCHEDULED' || lot.status === 'LIVE') && (
+                  {(lot.status === 'SCHEDULED' || lot.status === 'LIVE') && (
                     <button className="link danger" onClick={() => cancel(lot)}>Cancelar</button>
                   )}
                 </td>

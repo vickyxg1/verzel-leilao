@@ -1,5 +1,6 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api, brl, dateTime } from '../api'
+import { useLive } from '../realtime'
 
 type WalletData = {
   balance_cents: number
@@ -12,6 +13,7 @@ const KIND: Record<string, string> = {
   DEPOSIT: 'Depósito',
   SETTLEMENT_DEBIT: 'Arremate (débito)',
   SETTLEMENT_CREDIT: 'Venda (crédito)',
+  CANCEL_RELEASE: 'Estorno de reserva (lote cancelado)',
 }
 
 export default function Wallet() {
@@ -20,9 +22,12 @@ export default function Wallet() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
-  useEffect(() => {
+  const load = useCallback(() => {
     api<WalletData>('/wallet').then(setData).catch((e) => setError(e.message))
   }, [])
+  useEffect(load, [load])
+  // ser superado libera reserva (evento de lance); débito do arremate vem do pg_cron, sem evento: relê a cada 15 s
+  useLive('lots', load, 15_000)
 
   const depositSubmit = async (e: FormEvent) => {
     e.preventDefault()

@@ -135,22 +135,39 @@ lotsRouter.post('/', requireRole('AUCTIONEER'), async (req, res) => {
   res.status(201).json(present(rows[0]));
 });
 
-// Cancelamento: só o dono, só sem lances e antes do fim. FOR UPDATE serializa com lances concorrentes.
+// Cancelamento com estorno automático: só o dono, antes do fim. Se houver lances, a reserva do líder
+// volta ao disponível na mesma transação (os superados já tiveram a reserva liberada ao serem cobertos).
+// Mesma ordem de locks do lance e da liquidação (lote, depois carteira): sem deadlock, sem estado intermediário.
+export async function cancelLot(lotId: number, sellerId: number) {
+  return tx(async (c) => {
+    const { rows: [lot] } = await c.query(
+      'SELECT seller_id, leader_id, current_bid_cents, cancelled_at, ends_at FROM lots WHERE id = $1 FOR UPDATE',
+      [lotId],
+    );
+    if (!lot) throw new AppError(404, 'LOT_NOT_FOUND', 'Lote não encontrado');
+    if (lot.seller_id !== sellerId) throw new AppError(403, 'NOT_LOT_OWNER', 'Você só pode gerenciar seus próprios lotes');
+    if (lot.cancelled_at) throw new AppError(409, 'LOT_CANCELLED', 'Lote já cancelado');
+    // relógio lido depois do lock, como no lance: um lance pode ter prorrogado o fim enquanto esperávamos
+    const { rows: [{ t }] } = await c.query('SELECT clock_timestamp() AS t');
+    if (t >= lot.ends_at) throw new AppError(409, 'LOT_ENDED', 'Lote já encerrado');
+
+    if (lot.leader_id != null) {
+      await c.query('SELECT 1 FROM wallets WHERE user_id = $1 FOR UPDATE', [lot.leader_id]);
+      await c.query('UPDATE wallets SET committed_cents = committed_cents - $2 WHERE user_id = $1', [lot.leader_id, lot.current_bid_cents]);
+      await c.query(
+        `INSERT INTO wallet_entries (user_id, kind, amount_cents, lot_id, idempotency_key)
+         VALUES ($1, 'CANCEL_RELEASE', $2, $3, $4)`,
+        [lot.leader_id, lot.current_bid_cents, lotId, `cancel:${lotId}:release`],
+      );
+    }
+    await c.query('UPDATE lots SET cancelled_at = $2 WHERE id = $1', [lotId, t]);
+    return { refundedCents: lot.leader_id != null ? lot.current_bid_cents : 0 };
+  });
+}
+
 lotsRouter.post('/:id/cancel', requireRole('AUCTIONEER'), async (req, res) => {
   const id = z.coerce.number().int().positive().parse(req.params.id);
-  await tx(async (c) => {
-    const { rows } = await c.query(
-      `SELECT l.seller_id, l.bid_count, ${STATUS_SQL} AS status FROM lots l WHERE l.id = $1 FOR UPDATE`,
-      [id],
-    );
-    const lot = rows[0];
-    if (!lot) throw new AppError(404, 'LOT_NOT_FOUND', 'Lote não encontrado');
-    if (lot.seller_id !== req.user!.id) throw new AppError(403, 'NOT_LOT_OWNER', 'Você só pode gerenciar seus próprios lotes');
-    if (lot.status === 'CANCELLED') throw new AppError(409, 'LOT_CANCELLED', 'Lote já cancelado');
-    if (lot.status === 'ENDED') throw new AppError(409, 'LOT_ENDED', 'Lote já encerrado');
-    if (lot.bid_count > 0) throw new AppError(409, 'LOT_HAS_BIDS', 'Lote com lances não pode ser cancelado');
-    await c.query('UPDATE lots SET cancelled_at = now() WHERE id = $1', [id]);
-  });
+  const result = await cancelLot(id, req.user!.id);
   await publishLotChanged(id);
-  res.status(204).end();
+  res.json(result);
 });

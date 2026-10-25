@@ -40,7 +40,11 @@ function BidBox({ lot, history, onBid }: { lot: Lot; history: Bid[]; onBid: () =
     <div className="stack">
       {participated && (
         <p className={`status-banner ${leading ? 'winning' : 'losing'}`}>
-          {leading ? 'Você está ganhando!' : `Você foi superado (sua posição: ${position}º)`}
+          {lot.status === 'CANCELLED'
+            ? leading ? `Lote cancelado: sua reserva de ${brl(lot.current_bid_cents!)} foi estornada` : 'Lote cancelado: nenhum valor seu ficou reservado'
+            : lot.status === 'ENDED'
+            ? leading ? 'Você arrematou este lote!' : `Lote encerrado: você ficou em ${position}º`
+            : leading ? 'Você está ganhando!' : `Você foi superado (sua posição: ${position}º)`}
         </p>
       )}
       {lot.status === 'LIVE' && (

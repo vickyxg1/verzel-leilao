@@ -112,7 +112,9 @@ describe('vitrine e cancelamento', () => {
 
   it('dono cancela lote sem lances; some da vitrine, aparece no painel', async () => {
     const id = await insertLot(seller.user.id);
-    expect((await seller.agent.post(`/api/lots/${id}/cancel`)).status).toBe(204);
+    const res = await seller.agent.post(`/api/lots/${id}/cancel`);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ refundedCents: 0 });
     const vitrine = await request(app).get('/api/lots');
     const all = [...vitrine.body.live, ...vitrine.body.scheduled, ...vitrine.body.ended].map((l: any) => l.id);
     expect(all).not.toContain(id);
@@ -120,12 +122,66 @@ describe('vitrine e cancelamento', () => {
     expect(mine.body.lots.find((l: any) => l.id === id).status).toBe('CANCELLED');
   });
 
-  it('não cancela lote com lances nem encerrado', async () => {
-    const withBid = await insertLot(seller.user.id);
-    await pool.query('UPDATE lots SET bid_count = 1, current_bid_cents = 10000, leader_id = $2 WHERE id = $1', [withBid, bidder.user.id]);
-    expect((await seller.agent.post(`/api/lots/${withBid}/cancel`)).body.code).toBe('LOT_HAS_BIDS');
+  it('não cancela lote encerrado nem já cancelado', async () => {
     const ended = await insertLot(seller.user.id, { startOffsetS: -1200, endOffsetS: -600 });
     expect((await seller.agent.post(`/api/lots/${ended}/cancel`)).body.code).toBe('LOT_ENDED');
+    const id = await insertLot(seller.user.id);
+    await seller.agent.post(`/api/lots/${id}/cancel`);
+    expect((await seller.agent.post(`/api/lots/${id}/cancel`)).body.code).toBe('LOT_CANCELLED');
+  });
+});
+
+describe('cancelamento com estorno automático (opcional p. 6)', () => {
+  const wallet = async (b: typeof bidder) => (await b.agent.get('/api/wallet')).body;
+  const bid = (b: typeof bidder, lotId: number, amountCents: number) => b.agent.post(`/api/lots/${lotId}/bids`).send({ amountCents });
+  let ana: typeof bidder;
+  let bruno: typeof bidder;
+
+  beforeAll(async () => {
+    ana = await registerAs('BIDDER');
+    bruno = await registerAs('BIDDER');
+    await ana.agent.post('/api/wallet/deposit').send({ amountCents: 100_000 });
+    await bruno.agent.post('/api/wallet/deposit').send({ amountCents: 100_000 });
+  });
+
+  it('cancelar lote com lances devolve a reserva do líder, registra no extrato e não liquida depois', async () => {
+    const id = await insertLot(seller.user.id, { endOffsetS: 3 });
+    expect((await bid(ana, id, 10_000)).status).toBe(201);
+    expect((await bid(bruno, id, 11_000)).status).toBe(201);
+    expect((await wallet(bruno)).committed_cents).toBe(11_000);
+
+    const res = await seller.agent.post(`/api/lots/${id}/cancel`);
+    expect(res.body).toEqual({ refundedCents: 11_000 });
+    const w = await wallet(bruno);
+    expect(w).toMatchObject({ balance_cents: 100_000, committed_cents: 0, available_cents: 100_000 });
+    expect(w.entries[0]).toMatchObject({ kind: 'CANCEL_RELEASE', amount_cents: 11_000, lot_id: id });
+    expect(await wallet(ana)).toMatchObject({ committed_cents: 0 });
+    expect((await bid(ana, id, 12_000)).body.code).toBe('LOT_CANCELLED');
+
+    // depois do fim o agendador não liquida lote cancelado: ninguém é debitado
+    await new Promise((r) => setTimeout(r, 3_100));
+    await pool.query('SELECT settle_due_lots()');
+    expect((await pool.query('SELECT count(*)::int n FROM settlements WHERE lot_id = $1', [id])).rows[0].n).toBe(0);
+    expect((await wallet(bruno)).balance_cents).toBe(100_000);
+    // auditoria do histórico continua íntegra após o cancelamento
+    expect((await request(app).get(`/api/lots/${id}/audit`)).body.status).toBe('INTEGRO');
+  });
+
+  it('cancelamento e lance simultâneos: reservas ficam consistentes com o resultado', async () => {
+    const id = await insertLot(seller.user.id);
+    await bid(ana, id, 10_000);
+    await Promise.all([seller.agent.post(`/api/lots/${id}/cancel`), bid(bruno, id, 20_000)]);
+    const { rows: [lot] } = await pool.query('SELECT cancelled_at FROM lots WHERE id = $1', [id]);
+    expect(lot.cancelled_at).not.toBeNull();
+    // com o lote cancelado, ninguém pode ficar com valor reservado nele
+    expect((await wallet(ana)).committed_cents).toBe(0);
+    expect((await wallet(bruno)).committed_cents).toBe(0);
+  });
+
+  it('lote liquidado não pode ser cancelado nem pelo banco', async () => {
+    const id = await insertLot(seller.user.id, { startOffsetS: -1200, endOffsetS: -600 });
+    await pool.query('SELECT settle_lot($1)', [id]);
+    await expect(pool.query('UPDATE lots SET cancelled_at = now() WHERE id = $1', [id])).rejects.toThrow(/lots_cancel_before_settle/);
   });
 
   it('busca na vitrine filtra por título', async () => {
