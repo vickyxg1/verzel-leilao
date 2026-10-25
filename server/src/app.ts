@@ -16,7 +16,7 @@ const webDist = fileURLToPath(new URL('../../web/dist/', import.meta.url));
 
 export function createApp() {
   const app = express();
-  app.set('trust proxy', 1); // atrás do proxy do Render: IP real para rate limit
+  app.set('trust proxy', 1); // atrás do proxy da Vercel: IP real para rate limit
   app.use(express.json({ limit: '100kb' }));
   app.use(cookieParser());
   app.use(authenticate);

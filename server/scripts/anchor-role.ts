@@ -1,5 +1,5 @@
 // Cria na âncora o usuário que a API usa em produção: só SELECT e INSERT em bid_anchors.
-// Uso: ANCHOR_DATABASE_URL=<url do dono> ANCHOR_APP_PASSWORD=<senha> node api/scripts/anchor-role.ts
+// Uso: ANCHOR_DATABASE_URL=<url do dono> ANCHOR_APP_PASSWORD=<senha> node server/scripts/anchor-role.ts
 import pg from 'pg';
 
 const password = process.env.ANCHOR_APP_PASSWORD;

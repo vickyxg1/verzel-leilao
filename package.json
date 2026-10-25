@@ -3,14 +3,14 @@
   "private": true,
   "scripts": {
     "db:up": "docker compose up -d --wait",
-    "dev:api": "pnpm --filter api dev",
+    "dev:server": "pnpm --filter server dev",
     "dev:web": "pnpm --filter web dev",
-    "migrate": "pnpm --filter api migrate",
-    "seed": "pnpm --filter api seed",
-    "test": "pnpm --filter api test",
+    "migrate": "pnpm --filter server migrate",
+    "seed": "pnpm --filter server seed",
+    "test": "pnpm --filter server test",
     "typecheck": "pnpm -r typecheck",
     "build": "pnpm --filter web build",
-    "start": "pnpm --filter api start",
-    "db:local": "node api/scripts/local-db.ts"
+    "start": "pnpm --filter server start",
+    "db:local": "node server/scripts/local-db.ts"
   }
 }
