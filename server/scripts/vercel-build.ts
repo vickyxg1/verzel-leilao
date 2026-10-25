@@ -35,6 +35,8 @@ writeFileSync(func + '.vc-config.json', JSON.stringify({
   launcherType: 'Nodejs',
   regions: ['iad1'], // mesma região do Supabase (us-east-1)
   maxDuration: 30,
+  // só na função: no painel afetaria o build (pnpm pularia as devDependencies). Liga cookie Secure.
+  environment: { NODE_ENV: 'production' },
 }, null, 2));
 
 writeFileSync(out + 'config.json', JSON.stringify({
