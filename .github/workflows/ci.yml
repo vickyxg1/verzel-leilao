@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: leilao
+          POSTGRES_PASSWORD: leilao
+          POSTGRES_DB: leilao
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U leilao"
+          --health-interval 2s
+          --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Criar bancos de teste
+        run: psql postgres://leilao:leilao@localhost:5433/leilao -f docker/init-db.sql
+      - run: pnpm typecheck
+      - run: pnpm test
+      - name: Build da Vercel
+        run: node server/scripts/vercel-build.ts
