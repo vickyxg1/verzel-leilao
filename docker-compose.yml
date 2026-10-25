@@ -1,5 +1,5 @@
 # Postgres local para desenvolvimento e testes.
-# Em produção: banco principal e banco da âncora ficam em projetos Supabase separados.
+# Em produção: banco principal no Supabase e banco da âncora no Neon.
 services:
   db:
     image: postgres:16-alpine

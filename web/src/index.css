@@ -1,4 +1,5 @@
-/* Paleta "casa de leilões": papel, tinta e dourado. Tokens em :root, dark mode por preferência do sistema. */
+/* Paleta "casa de leilões": papel, tinta e dourado. Tokens em :root; tema escuro por data-theme no <html>
+   (definido em index.html: escolha do usuário ou, sem escolha, preferência do sistema). */
 :root {
   --bg: #f7f5f0;
   --card: #ffffff;
@@ -22,24 +23,22 @@
   background: var(--bg);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #121110;
-    --card: #1b1a18;
-    --text: #ede9e3;
-    --muted: #a39d93;
-    --border: #2e2b27;
-    --primary: #d9ab5b;
-    --on-primary: #1b1a18;
-    --gold: #d9ab5b;
-    --gold-soft: #2c2519;
-    --accent: #e3b96b;
-    --ok: #5ec27f;
-    --danger: #ff6b72;
-    --warning: #f08a3c;
-    --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 4px 16px rgb(0 0 0 / .25);
-    color-scheme: dark;
-  }
+:root[data-theme="dark"] {
+  --bg: #121110;
+  --card: #1b1a18;
+  --text: #ede9e3;
+  --muted: #a39d93;
+  --border: #2e2b27;
+  --primary: #d9ab5b;
+  --on-primary: #1b1a18;
+  --gold: #d9ab5b;
+  --gold-soft: #2c2519;
+  --accent: #e3b96b;
+  --ok: #5ec27f;
+  --danger: #ff6b72;
+  --warning: #f08a3c;
+  --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 4px 16px rgb(0 0 0 / .25);
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -195,3 +194,6 @@ code { font-size: 13px; }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
 .stats .card { display: flex; flex-direction: column; gap: 4px; }
 .stats strong { font-family: var(--serif); font-size: 26px; font-weight: 600; }
+.picked { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.picked img { width: 160px; border-radius: 8px; }
+.icon-btn { padding: 8px; display: inline-flex; align-items: center; justify-content: center; }

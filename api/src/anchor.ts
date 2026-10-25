@@ -1,4 +1,4 @@
-// Âncora independente da auditoria: banco SEPARADO (outro projeto Supabase, outra credencial),
+// Âncora independente da auditoria: banco SEPARADO (Neon, outro provedor e outra credencial),
 // onde cada lance aceito registra (lote, seq, hash). Quem altera o banco principal não altera a âncora.
 import pg from 'pg';
 import { config } from './config.ts';

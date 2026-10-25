@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { api, brl, STATUS_LABEL, type LotStatus } from '../api'
+import { useLive } from '../realtime'
 
 type Participation = {
   id: number
@@ -25,10 +26,18 @@ function result(p: Participation) {
 export default function MyWins() {
   const [items, setItems] = useState<Participation[] | null>(null)
   const [error, setError] = useState('')
+  const [copied, setCopied] = useState<string | null>(null)
 
-  useEffect(() => {
+  const load = useCallback(() => {
     api<Participation[]>('/me/participations').then(setItems).catch((e) => setError(e.message))
   }, [])
+  useEffect(load, [load])
+  useLive('lots', load, 15_000)
+
+  const copyLink = async (token: string) => {
+    await navigator.clipboard.writeText(`${window.location.origin}/comprovantes/${token}`)
+    setCopied(token)
+  }
 
   const won = items?.filter((p) => p.won) ?? []
 
@@ -44,6 +53,11 @@ export default function MyWins() {
                 <td><Link to={`/lotes/${p.id}`}>{p.title}</Link></td>
                 <td><strong>{brl(p.current_bid_cents)}</strong></td>
                 <td><Link to={`/comprovantes/${p.receipt_token}`}>Ver comprovante</Link></td>
+                <td>
+                  <button className="link" onClick={() => copyLink(p.receipt_token!)}>
+                    {copied === p.receipt_token ? 'Link copiado!' : 'Copiar link'}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody></table>

@@ -9,18 +9,20 @@ const supabase = url && key ? new RealtimeClient(`${url}/realtime/v1`, { params:
 // Chama onChange quando a API avisa que o tópico mudou (Supabase Broadcast).
 // O evento não traz dados: a tela relê da API, então um aviso perdido não deixa estado errado.
 // Ressincroniza ao (re)conectar e ao voltar para a aba. Sem Supabase configurado, consulta a cada 3 s.
-export function useLive(topic: string, onChange: () => void) {
+// everyMs: releitura periódica para mudanças sem evento (lote mudando de estado pelo relógio, encerramento pelo pg_cron).
+export function useLive(topic: string, onChange: () => void, everyMs?: number) {
   useEffect(() => {
     const onVisible = () => { if (document.visibilityState === 'visible') onChange() }
     document.addEventListener('visibilitychange', onVisible)
-    if (!supabase) {
-      const timer = setInterval(onChange, 3000)
-      return () => { clearInterval(timer); document.removeEventListener('visibilitychange', onVisible) }
-    }
+    const timer = !supabase ? setInterval(onChange, 3000) : everyMs ? setInterval(onChange, everyMs) : undefined
     const channel = supabase
-      .channel(topic)
+      ?.channel(topic)
       .on('broadcast', { event: 'changed' }, onChange)
       .subscribe((status) => { if (status === 'SUBSCRIBED') onChange() })
-    return () => { supabase.removeChannel(channel); document.removeEventListener('visibilitychange', onVisible) }
-  }, [topic, onChange])
+    return () => {
+      clearInterval(timer)
+      if (channel) supabase!.removeChannel(channel)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [topic, onChange, everyMs])
 }

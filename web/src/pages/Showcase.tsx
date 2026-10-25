@@ -19,12 +19,10 @@ export default function Showcase() {
   }, [q])
   useEffect(() => {
     const t = setTimeout(load, 250)
-    // lotes mudam de seção pela passagem do tempo, sem evento; relê a cada 30 s
-    const every = setInterval(load, 30_000)
-    return () => { clearTimeout(t); clearInterval(every) }
+    return () => clearTimeout(t)
   }, [load])
-  // novos lances, lotes criados e cancelados aparecem sem refresh
-  useLive('lots', load)
+  // novos lances, lotes criados e cancelados aparecem sem refresh; mudança de seção pelo relógio, a cada 30 s
+  useLive('lots', load, 30_000)
 
   return (
     <>
