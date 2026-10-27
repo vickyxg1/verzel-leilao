@@ -39,7 +39,15 @@ describe('busca na API externa', () => {
     mockAic();
     const res = await seller.agent.get('/api/items/search?q=monet');
     expect(res.status).toBe(200);
-    expect(res.body).toEqual([expect.objectContaining({ externalId: '7', title: 'Busca' })]);
+    expect(res.body).toEqual([expect.objectContaining({ externalId: '7', title: 'Busca', thumbUrl: '/api/items/thumb/img7' })]);
+  });
+
+  it('miniatura servida pela API', async () => {
+    mockAic();
+    const img = await seller.agent.get('/api/items/thumb/img7');
+    expect(img.status).toBe(200);
+    expect(img.headers['content-type']).toBe('image/jpeg');
+    expect((await seller.agent.get('/api/items/thumb/a..b')).status).toBe(400);
   });
 
   it.each([

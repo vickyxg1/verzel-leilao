@@ -48,7 +48,8 @@ async function aicJson<T>(url: string): Promise<T> {
   }
 }
 
-const thumb = (imageId: string) => `${IIIF}/${imageId}/full/200,/0/default.jpg`;
+// Miniatura passa pela API: o IIIF bloqueia (403) requisições vindas direto do navegador.
+const thumb = (imageId: string) => `/api/items/thumb/${imageId}`;
 
 // Limitação: cache em memória por instância; perde-se em cold start, suficiente para aliviar rate limit.
 const cache = new Map<string, { at: number; data: unknown }>();
@@ -105,4 +106,13 @@ export const itemsRouter = Router();
 itemsRouter.get('/search', requireRole('AUCTIONEER'), async (req, res) => {
   const { q } = z.object({ q: z.string().trim().min(2).max(100) }).parse(req.query);
   res.json(await searchArtworks(q));
+});
+
+itemsRouter.get('/thumb/:imageId', requireRole('AUCTIONEER'), async (req, res) => {
+  // Só aceita formato de image_id do AIC: impede montar outras URLs no servidor.
+  const { imageId } = z.object({ imageId: z.string().regex(/^[0-9a-z-]{1,64}$/i) }).parse(req.params);
+  const img = await aicFetch(`${IIIF}/${imageId}/full/200,/0/default.jpg`);
+  const mime = img.headers.get('content-type') ?? '';
+  if (!mime.startsWith('image/')) throw new AppError(502, 'EXTERNAL_UNAVAILABLE', 'Imagem do acervo inválida.');
+  res.set('Content-Type', mime).set('Cache-Control', 'private, max-age=86400').send(Buffer.from(await img.arrayBuffer()));
 });
